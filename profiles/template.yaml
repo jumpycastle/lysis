@@ -1,0 +1,152 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Lysis profile — START HERE.
+#
+#  This is the ONE file you edit to customize a review. Copy it per client/system:
+#      cp profiles/template.yaml profiles/<you>.yaml
+#  then run:  lysis review <artifacts> --profile profiles/<you>.yaml
+#
+#  Everything client-specific lives here. You never need to touch prompts/ or the
+#  code: prompts/ holds the built-in methodology, enforce.py the deterministic
+#  checks. To tweak the methodology itself, use `extra_instructions` below.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Who the review is for. Appears in the reviewer's role line.
+org_name: "the client"
+
+# Optional free text: industry, regulatory context, risk appetite, anything the
+# reviewer should keep in mind for every finding.
+org_context: ""
+
+# Methodology tweaks appended to the system prompt — change HOW the agent reviews
+# without editing prompts/. Examples:
+#   extra_instructions: "Treat any npm/pip supply-chain exposure as at least High."
+#   extra_instructions: "This is a GxP system; weight record-integrity issues heavily."
+extra_instructions: ""
+
+# Device / IoT / OT lens:  auto | true | false
+#   auto  = apply it when the extracted model contains hardware, gateways,
+#           instruments, or firmware (recommended)
+#   true  = always apply   |   false = never apply
+device_lens: auto
+
+# Frameworks the agent may reference (STRIDE is always required on a Risk).
+frameworks: "OWASP Top 10, MITRE ATT&CK, NIST 800-53, NIST 800-207, CIS Controls, CSA CCM"
+
+# Appended to the Critical severity rubric, e.g. ", GxP data integrity". Usually empty.
+critical_extra: ""
+
+# ── Standards pack ──────────────────────────────────────────────────────────
+# A folder of markdown files, one standard per file; the first "# <Name>" line is
+# the citable name. Replace standards/example with your own pack. `triggers` tell
+# the agent when each standard applies.
+standards:
+  dir: standards/example
+  triggers:
+    - {name: "Identity and Access Standard", when: "identity, authentication, authorization, service accounts"}
+    - {name: "Data Classification Standard", when: "handling of sensitive, personal, or regulated data"}
+    - {name: "Cloud Security Baseline", when: "cloud-hosted components"}
+    - {name: "Third-Party Risk Standard", when: "vendors, SaaS, external integrations"}
+
+# ── Control gates ───────────────────────────────────────────────────────────
+# Each gate is answered Yes / No / Unknown with evidence. A "No", a "Yes" without
+# evidence, or (if gate_rules.unknown_creates_finding) an "Unknown" produces its
+# own Risk finding. {{siem}} is filled from `siem` below.
+control_gates:
+  - id: ir_kill_switch
+    title: "No protected account-termination path for Incident Response"
+    attacker_path: "An attacker using a compromised account or token keeps access while responders cannot terminate the account or revoke its sessions and tokens in this system."
+    question: "Is a protected API key or integration available to Incident Response to disable or terminate accounts and sessions?"
+    stride: Repudiation
+    category: "Incident Response"
+    owner: "System Owner"
+    remediation: "Provide Incident Response with a protected, audited mechanism (API or admin integration) to disable accounts and revoke sessions and tokens."
+  - id: security_logging
+    title: "Security events not forwarded to the SIEM"
+    attacker_path: "An attacker abusing valid access (bulk export, privilege changes, repeated authorization failures) is not detected because security events never reach {{siem}}."
+    question: "Do security-relevant logs (authentication, authorization decisions, admin actions, data export) exist AND currently forward to {{siem}}?"
+    stride: Repudiation
+    category: "Logging & Monitoring"
+    owner: "System Owner"
+    remediation: "Emit authentication, authorization-failure, admin, and bulk-export events and forward them to {{siem}} with an agreed retention period."
+  - id: rbac
+    title: "Authorization for sensitive data and actions not demonstrated"
+    attacker_path: "A low-privileged or cross-tenant user reaches sensitive data or privileged actions because server-side role and tenant checks are missing or unverified."
+    question: "Is role-based (or attribute-based) authorization enforced for sensitive data and privileged actions?"
+    stride: ElevationOfPrivilege
+    category: "Access Control"
+    owner: "Application Engineering"
+    remediation: "Enforce server-side authorization for sensitive data and privileged actions, scoped to role and tenant."
+  - id: strong_auth
+    title: "Strong authentication (SSO + MFA) not enforced"
+    attacker_path: "An attacker with a phished or reused password logs in directly because SSO with MFA is not enforced for this system."
+    question: "Is strong authentication (SSO with MFA, or equivalent phishing-resistant auth) enforced for all human users where applicable?"
+    stride: Spoofing
+    category: "Authentication"
+    owner: "IAM Team"
+    remediation: "Enforce SSO with MFA for all human access; disable local password logins except audited break-glass accounts."
+  - id: infra_hygiene
+    title: "Baseline infrastructure controls (EDR, scoped network access, segmentation) not demonstrated"
+    attacker_path: "An attacker who gains a foothold on one host moves laterally and escalates because endpoint detection is absent, security groups/ACLs are over-broad, the workload network is flat, or instance metadata is reachable (IMDSv1)."
+    question: "Are baseline infrastructure controls threat models often miss in place — EDR on hosts, least-privilege security groups/ACLs, network segmentation, and hardened instance metadata (e.g. IMDSv2)?"
+    stride: ElevationOfPrivilege
+    category: "Infrastructure"
+    owner: "Infrastructure Team"
+    remediation: "Deploy EDR to all hosts, scope security groups/ACLs to least privilege, segment the workload network, and require IMDSv2 (or equivalent metadata hardening)."
+  - id: secrets_management
+    title: "Secrets not managed in a dedicated vault"
+    attacker_path: "An attacker who reads a config file, environment variable, source repo, or log recovers a long-lived credential because secrets are not stored in a managed vault and are not rotated."
+    question: "Are application secrets (API keys, DB credentials, tokens, certificates) stored in a dedicated secrets manager/vault — not in source, config, or environment — and rotated on a defined schedule?"
+    stride: InformationDisclosure
+    category: "Secrets Management"
+    owner: "Application Engineering"
+    remediation: "Store all secrets in an approved secrets manager with least-privilege access and automated rotation; remove secrets from source, config, and environment variables."
+  - id: patch_management
+    title: "No defined patch SLA for critical security updates"
+    attacker_path: "An attacker exploits a known CVE in an unpatched component or an end-of-life dependency because critical security updates are not applied on a defined timeline."
+    question: "Are critical security updates applied on a defined SLA across OS, dependencies, containers, and infrastructure, with no unsupported or end-of-life components in scope?"
+    stride: ElevationOfPrivilege
+    category: "Vulnerability Management"
+    owner: "Infrastructure Team"
+    remediation: "Define and enforce a patch SLA for critical updates across OS, dependencies, containers, and IaC; replace or isolate end-of-life components."
+
+gate_rules:
+  unknown_creates_finding: true     # treat "Unknown" like "Yes without evidence"
+  finding_severity: Medium          # default severity of generated gate findings
+
+# Your SIEM / log platform name, substituted into the gate text above.
+siem: "the central SIEM"
+
+# Tags applied to findings and to the single Risk Assessment Story.
+tags:
+  risk_required: ["Threat Model", "Threat Model Agent", "Source: Design Review"]
+  story_exact: ["Threat Model Agent", "Design Review"]
+suggested_team: "Security"
+
+decision_emoji:
+  "Approved for Go-Live": "✅"
+  "Conditional Approval": "🚫"
+  "Not Approved": "🚫"
+
+# Minimum input: "all_missing" = skip only when purpose, data flows AND users are
+# all absent. "any_missing" = skip if any one is absent.
+min_input_mode: all_missing
+
+max_findings_soft_cap: 15
+
+priority_from_severity:
+  Critical: High
+  High: High
+  Medium: Medium
+  Low: Low
+  Informational: Low
+
+# Model per pass. Bigger model for judgment-heavy passes, faster model for extraction.
+models:
+  extract: claude-sonnet-5-5
+  draft: claude-opus-5-5
+  verify: claude-sonnet-5-5
+  critique: claude-opus-5-5
+  finalize: claude-opus-5-5
+
+max_tokens: 32000
+verify_max_tool_calls: 40

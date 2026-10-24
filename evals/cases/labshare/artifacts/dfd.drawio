@@ -1,0 +1,20 @@
+<mxfile><diagram name="LabShare DFD"><mxGraphModel><root>
+<mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="b1" value="AWS VPC (private subnets)" style="swimlane;dashed=1" vertex="1" parent="1"/>
+<mxCell id="u1" value="Sponsor Scientist" vertex="1" parent="1"/>
+<mxCell id="u2" value="CRO Lab Tech" vertex="1" parent="1"/>
+<mxCell id="l1" value="CRO LIMS" vertex="1" parent="1"/>
+<mxCell id="alb" value="ALB" vertex="1" parent="1"/>
+<mxCell id="api" value="Flask API" vertex="1" parent="b1"/>
+<mxCell id="db" value="RDS PostgreSQL" vertex="1" parent="b1"/>
+<mxCell id="s3" value="S3 Results Bucket" vertex="1" parent="1"/>
+<mxCell id="w" value="Export Worker" vertex="1" parent="b1"/>
+<mxCell id="e1" value="HTTPS + OIDC token" edge="1" source="u1" target="alb" parent="1"/>
+<mxCell id="e2" value="HTTPS upload" edge="1" source="u2" target="alb" parent="1"/>
+<mxCell id="e3" value="webhook POST (result ready)" edge="1" source="l1" target="alb" parent="1"/>
+<mxCell id="e4" edge="1" source="alb" target="api" parent="1"/>
+<mxCell id="e5" value="SQL" edge="1" source="api" target="db" parent="1"/>
+<mxCell id="e6" value="put/get objects" edge="1" source="api" target="s3" parent="1"/>
+<mxCell id="e7" value="export job" edge="1" source="api" target="w" parent="1"/>
+<mxCell id="e8" value="pre-signed URL" edge="1" source="w" target="s3" parent="1"/>
+</root></mxGraphModel></diagram></mxfile>

@@ -1,0 +1,63 @@
+# Example: a regulated life-sciences enterprise profile (mirrors the original instruction set
+# that was published for the talk). Use as a template for clients with GxP obligations.
+
+extends: default.yaml
+
+org_name: "the enterprise"
+org_context: |
+  Regulated life-sciences environment. Systems that create, modify, or store GxP records are
+  subject to Computer System Validation and 21 CFR Part 11 (audit trails, e-signatures,
+  record integrity).
+critical_extra: ", GxP data integrity compromise"
+siem: "the SIEM"
+
+standards:
+  dir: standards/example
+  triggers:
+    - {name: "Identity and Access Standard", when: "identity, authentication, authorization"}
+    - {name: "Data Classification Standard", when: "data handling"}
+    - {name: "Cloud Security Baseline", when: "cloud-hosted components"}
+    - {name: "Third-Party Risk Standard", when: "vendors and third-party integrations"}
+    - {name: "CSV / 21 CFR Part 11 Standard", when: "GxP systems or records"}
+
+control_gates:
+  - id: ir_kill_switch
+    title: "No protected account-termination path for Incident Response"
+    question: "Is a protected API key or integration available to Incident Response for account termination?"
+    stride: Repudiation
+    category: "Incident Response"
+    owner: "System Owner"
+    remediation: "Provide IR with a protected, audited integration to terminate accounts and revoke sessions."
+  - id: security_logging
+    title: "Security logs not forwarded to the SIEM"
+    question: "Do security logs exist AND currently forward to the SIEM?"
+    stride: Repudiation
+    category: "Logging & Monitoring"
+    owner: "System Owner"
+    remediation: "Forward authentication, authorization, and admin audit events to the SIEM."
+  - id: rbac
+    title: "RBAC for sensitive data and actions not demonstrated"
+    question: "Is RBAC enforced for sensitive data and actions?"
+    stride: ElevationOfPrivilege
+    category: "Access Control"
+    owner: "Application Engineering"
+    remediation: "Enforce server-side RBAC for sensitive data and privileged actions."
+  - id: strong_auth
+    title: "Strong authentication / SSO not enforced"
+    question: "Is strong authentication and SSO enforced where applicable?"
+    stride: Spoofing
+    category: "Authentication"
+    owner: "IAM Team"
+    remediation: "Enforce SSO with MFA for all human users."
+  - id: infra_hygiene
+    title: "Baseline infrastructure controls (EDR, ACLs, segmentation) not demonstrated"
+    question: "Are general infrastructure controls threat models often miss in place — EDR on hosts, tightly scoped ACLs/security groups, network segmentation?"
+    stride: ElevationOfPrivilege
+    category: "Infrastructure"
+    owner: "Infrastructure Team"
+    remediation: "Deploy EDR to all hosts, scope security groups to least privilege, and segment the workload network."
+
+tags:
+  risk_required: ["Threat Model", "Threat Model Agent", "RiskRegister", "Source: Design Review"]
+  story_exact: ["Threat Model Agent", "Design Review"]
+suggested_team: "Cyber"

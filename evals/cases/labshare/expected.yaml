@@ -1,0 +1,25 @@
+# Expectations for the LabShare sample case (fictional system).
+system_name: LabShare
+expected_decision: Conditional Approval   # worst decision across scopes
+max_findings: 10
+
+must_find:
+  - id: export-cross-tenant
+    keywords: [["tenant"], ["export"]]
+    min_severity: High
+  - id: lims-webhook-unauthenticated
+    keywords: [["webhook", "lims"]]
+    min_severity: Medium
+  - id: long-lived-presigned-url
+    keywords: [["pre-signed", "presigned"]]
+    min_severity: Medium
+
+must_not_find:
+  - id: sql-injection          # all queries are parameterized
+    keywords: [["sql injection", "sqli"]]
+  - id: generic-ddos
+    keywords: [["ddos", "denial of service"], ["generic", "rate limit"]]
+
+gates:
+  security_logging: "No"
+  strong_auth: "Yes"
